@@ -36,7 +36,7 @@ public class WebhookController {
         }
 
         // 👇 Delegate to service
-        webhookService.processWebhook(payload, eventType);
+//        webhookService.processWebhook(payload, eventType);
 
         return ResponseEntity.ok("Webhook processed successfully");
     }

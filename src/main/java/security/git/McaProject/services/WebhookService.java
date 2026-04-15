@@ -4,6 +4,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+import java.util.Map;
+
 @Service
 public class WebhookService {
 
@@ -16,59 +19,100 @@ public class WebhookService {
         this.analysisService = analysisService;
     }
 
-    public void processWebhook(String payload, String eventType) {
+//    public void processWebhook(String payload, String eventType) {
+//
+//        System.out.println("📩 Event Received: " + eventType);
+//
+//        if ("push".equals(eventType)) {
+//            try {
+//                ObjectMapper mapper = new ObjectMapper();
+//                JsonNode root = mapper.readTree(payload);
+//
+//                String repoName = root.get("repository").get("name").asText();
+//                System.out.println("Repo Name: " + repoName);
+//                String owner = root.get("repository").get("owner").get("login").asText();
+//                System.out.println("Owner: " + owner);
+//
+//                JsonNode commits = root.get("commits");
+//
+//                for (JsonNode commit : commits) {
+//
+//                    JsonNode addedFiles = commit.get("added");
+//                    JsonNode modifiedFiles = commit.get("modified");
+//
+//                    // Process added files
+//                    processFiles(owner, repoName, addedFiles);
+//
+//                    // Process modified files
+//                    processFiles(owner, repoName, modifiedFiles);
+//                }
+//
+//            } catch (Exception e) {
+//                System.out.println("❌ Error processing webhook: " + e.getMessage());
+//            }
+//        }
+//    }
+public void processWebhook(Map<String, Object> payload) {
 
-        System.out.println("📩 Event Received: " + eventType);
+    Map<String, Object> repository = (Map<String, Object>) payload.get("repository");
+    Map<String, Object> ownerMap = (Map<String, Object>) repository.get("owner");
 
-        if ("push".equals(eventType)) {
-            try {
-                ObjectMapper mapper = new ObjectMapper();
-                JsonNode root = mapper.readTree(payload);
+    String owner = (String) ownerMap.get("login");
+    String repo = (String) repository.get("name");
 
-                String repoName = root.get("repository").get("name").asText();
-                System.out.println("Repo Name: " + repoName);
-                String owner = root.get("repository").get("owner").get("login").asText();
-                System.out.println("Owner: " + owner);
+    String ref = (String) payload.get("ref"); // refs/heads/master
+    String branch = ref.replace("refs/heads/", "");
 
-                JsonNode commits = root.get("commits");
+    System.out.println("Owner: " + owner);
+    System.out.println("Repo: " + repo);
+    System.out.println("Branch: " + branch);
 
-                for (JsonNode commit : commits) {
+    List<Map<String, Object>> commits = (List<Map<String, Object>>) payload.get("commits");
 
-                    JsonNode addedFiles = commit.get("added");
-                    JsonNode modifiedFiles = commit.get("modified");
+    for (Map<String, Object> commit : commits) {
 
-                    // Process added files
-                    processFiles(owner, repoName, addedFiles);
+        List<String> added = (List<String>) commit.get("added");
+        List<String> modified = (List<String>) commit.get("modified");
 
-                    // Process modified files
-                    processFiles(owner, repoName, modifiedFiles);
-                }
+        processFiles(owner, repo, branch, added);
+        processFiles(owner, repo, branch, modified);
+    }
+}
 
-            } catch (Exception e) {
-                System.out.println("❌ Error processing webhook: " + e.getMessage());
-            }
+//    private void processFiles(String owner, String repo, JsonNode files) {
+//        if (files == null) return;
+//
+//        for (JsonNode fileNode : files) {
+//            String filePath = fileNode.asText();
+//
+//            // Only analyze code files
+//            if (!filePath.endsWith(".java") && !filePath.endsWith(".js")) {
+//                continue;
+//            }
+//
+//            System.out.println("📂 Fetching file: " + filePath);
+//
+//            String code = githubApiService.getFileContent(owner, repo, filePath);
+//
+//            if (code != null) {
+//                System.out.println("🧠 Sending REAL CODE to Gemini...");
+//                analysisService.analyzeCode(code);
+//            }
+//        }
+//    }
+private void processFiles(String owner, String repo, String branch, List<String> files) {
+    if (files == null) return;
+
+    for (String filePath : files) {
+        System.out.println("📂 Fetching file: " + filePath);
+
+        try {
+            String code = githubApiService.getFileContent(owner, repo, branch, filePath);
+            analysisService.analyzeCode(code);
+
+        } catch (Exception e) {
+            System.out.println("❌ Error fetching file: " + filePath);
         }
     }
-
-    private void processFiles(String owner, String repo, JsonNode files) {
-        if (files == null) return;
-
-        for (JsonNode fileNode : files) {
-            String filePath = fileNode.asText();
-
-            // Only analyze code files
-            if (!filePath.endsWith(".java") && !filePath.endsWith(".js")) {
-                continue;
-            }
-
-            System.out.println("📂 Fetching file: " + filePath);
-
-            String code = githubApiService.getFileContent(owner, repo, filePath);
-
-            if (code != null) {
-                System.out.println("🧠 Sending REAL CODE to Gemini...");
-                analysisService.analyzeCode(code);
-            }
-        }
-    }
+}
 }
