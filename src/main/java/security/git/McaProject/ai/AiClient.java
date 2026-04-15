@@ -65,16 +65,19 @@ public class AiClient {
     @Value("${gemini.api.key}")
     private String apiKey;
 
-    private static final String GEMINI_URL =
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
+    private static final String BASE_URL =
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent";
 
     public String callGemini(String prompt) {
 
-        // Build URL properly AFTER apiKey is injected
-        String url = GEMINI_URL + "?key=" + apiKey;
+        if (apiKey == null || apiKey.isBlank()) {
+            throw new RuntimeException("Gemini API key is missing!");
+        }
 
-        System.out.println("API Key Loaded: " + (apiKey != null));
-        System.out.println("Final URL: " + url);
+        String url = BASE_URL + "?key=" + apiKey;
+
+        System.out.println("API Key Loaded: true");
+        System.out.println("Final URL: " + BASE_URL); // don't print full key in logs
 
         RestTemplate restTemplate = new RestTemplate();
 
