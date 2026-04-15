@@ -43,28 +43,33 @@ public class GithubApiService {
 //            return null;
 //        }
 //    }
-public String getFileContent(String owner, String repo, String branch, String path) {
+public String getFileContent(String owner, String repo, String branch, String filePath) {
 
     String url = "https://api.github.com/repos/" + owner + "/" + repo +
-            "/contents/" + path + "?ref=" + branch;
+            "/contents/" + filePath + "?ref=" + branch;
 
     System.out.println("Final URL: " + url);
 
-    HttpHeaders headers = new HttpHeaders();
-    headers.set("Authorization", "Bearer " + githubToken);
-    headers.set("Accept", "application/vnd.github.v3+json");
+    RestTemplate restTemplate = new RestTemplate();
 
-    HttpEntity<Void> entity = new HttpEntity<>(headers);
+    try {
+        Map<String, Object> response = restTemplate.getForObject(url, Map.class);
 
-    ResponseEntity<Map> response = restTemplate.exchange(
-            url,
-            HttpMethod.GET,
-            entity,
-            Map.class
-    );
+        if (response == null || !response.containsKey("content")) {
+            throw new RuntimeException("Invalid response from GitHub");
+        }
 
-    String content = (String) response.getBody().get("content");
+        String encodedContent = (String) response.get("content");
+        encodedContent = encodedContent.replace("\n", "");
 
-    return new String(Base64.getDecoder().decode(content));
+        // ✅ Decode Base64
+        byte[] decodedBytes = java.util.Base64.getDecoder().decode(encodedContent);
+        String decodedContent = new String(decodedBytes);
+
+        return decodedContent;
+
+    } catch (Exception e) {
+        throw new RuntimeException("Failed to fetch file: " + filePath, e);
+    }
 }
 }
