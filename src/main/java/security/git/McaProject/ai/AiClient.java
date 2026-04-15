@@ -11,13 +11,18 @@ public class AiClient {
     @Value("${gemini.api.key}")
     private String apiKey;
 
-    private final String GEMINI_URL =
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + apiKey;
+//    private final String GEMINI_URL =
+//            "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + apiKey;
+private final String GEMINI_URL =
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
+
+    String url = GEMINI_URL + "?key" + apiKey;
 
     public String callGemini(String prompt) {
 
         System.out.println("API: " + apiKey);
-        System.out.println("GEMINI URL: " + GEMINI_URL);
+//        System.out.println("GEMINI URL: " + GEMINI_URL);
+        System.out.println("GEMINI URL: " + url);
 
         RestTemplate restTemplate = new RestTemplate();
 
@@ -37,7 +42,7 @@ public class AiClient {
         HttpEntity<String> request = new HttpEntity<>(requestBody, headers);
 
         ResponseEntity<String> response = restTemplate.exchange(
-                GEMINI_URL + apiKey,
+                url + apiKey,
                 HttpMethod.POST,
                 request,
                 String.class
