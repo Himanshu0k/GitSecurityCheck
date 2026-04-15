@@ -9,12 +9,15 @@ import org.springframework.web.client.RestTemplate;
 public class AiClient {
 
     @Value("${gemini.api.key}")
-    private static String apiKey;
+    private String apiKey;
 
-    private static final String GEMINI_URL =
+    private final String GEMINI_URL =
             "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + apiKey;
 
     public String callGemini(String prompt) {
+
+        System.out.println("API: " + apiKey);
+        System.out.println("GEMINI URL: " + GEMINI_URL);
 
         RestTemplate restTemplate = new RestTemplate();
 
