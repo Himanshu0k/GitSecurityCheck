@@ -54,13 +54,15 @@ public class WebhookService {
 //    }
 public void processWebhook(Map<String, Object> payload) {
 
+    System.out.println("🚀 Processing webhook...");
+
     Map<String, Object> repository = (Map<String, Object>) payload.get("repository");
     Map<String, Object> ownerMap = (Map<String, Object>) repository.get("owner");
 
     String owner = (String) ownerMap.get("login");
     String repo = (String) repository.get("name");
 
-    String ref = (String) payload.get("ref"); // refs/heads/master
+    String ref = (String) payload.get("ref");
     String branch = ref.replace("refs/heads/", "");
 
     System.out.println("Owner: " + owner);
@@ -68,6 +70,11 @@ public void processWebhook(Map<String, Object> payload) {
     System.out.println("Branch: " + branch);
 
     List<Map<String, Object>> commits = (List<Map<String, Object>>) payload.get("commits");
+
+    if (commits == null) {
+        System.out.println("⚠️ No commits found");
+        return;
+    }
 
     for (Map<String, Object> commit : commits) {
 
@@ -104,6 +111,13 @@ private void processFiles(String owner, String repo, String branch, List<String>
     if (files == null) return;
 
     for (String filePath : files) {
+        System.out.println("📂 Fetching file: " + filePath);
+
+        // ✅ Add filter here
+        if (!filePath.endsWith(".java") && !filePath.endsWith(".js")) {
+            continue;
+        }
+
         System.out.println("📂 Fetching file: " + filePath);
 
         try {

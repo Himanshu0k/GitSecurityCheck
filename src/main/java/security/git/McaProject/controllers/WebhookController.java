@@ -1,5 +1,6 @@
 package security.git.McaProject.controllers;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -10,6 +11,7 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/webhook")
@@ -21,25 +23,55 @@ public class WebhookController {
     @Autowired
     private WebhookService webhookService;
 
-    @PostMapping
-    public ResponseEntity<String> handleWebhook(
-            @RequestBody String payload,
-            @RequestHeader(value = "X-Hub-Signature-256", required = false) String signature,
-            @RequestHeader(value = "X-GitHub-Event", required = false) String eventType) {
+//    @PostMapping
+//    public ResponseEntity<String> handleWebhook(
+////            @RequestBody String payload,
+//            @RequestBody Map<String, Object> payload,
+//            @RequestHeader(value = "X-Hub-Signature-256", required = false) String signature,
+//            @RequestHeader(value = "X-GitHub-Event", required = false) String eventType) {
+//
+//        if (signature == null) {
+//            return ResponseEntity.status(401).body("Missing signature");
+//        }
+//
+//        if (!isValidSignature(payload, signature)) {
+//            return ResponseEntity.status(401).body("Invalid signature");
+//        }
+//
+//        // 👇 Delegate to service
+////        webhookService.processWebhook(payload, eventType);
+//        webhookService.processWebhook(payload);
+//
+//        return ResponseEntity.ok("Webhook processed successfully");
+//    }
+@PostMapping
+public ResponseEntity<String> handleWebhook(
+        @RequestBody String payload,
+        @RequestHeader(value = "X-Hub-Signature-256", required = false) String signature,
+        @RequestHeader(value = "X-GitHub-Event", required = false) String eventType) {
 
-        if (signature == null) {
-            return ResponseEntity.status(401).body("Missing signature");
-        }
+    System.out.println("📩 Event Received: " + eventType);
 
-        if (!isValidSignature(payload, signature)) {
-            return ResponseEntity.status(401).body("Invalid signature");
-        }
-
-        // 👇 Delegate to service
-//        webhookService.processWebhook(payload, eventType);
-
-        return ResponseEntity.ok("Webhook processed successfully");
+    if (signature == null) {
+        return ResponseEntity.status(401).body("Missing signature");
     }
+
+    if (!isValidSignature(payload, signature)) {
+        return ResponseEntity.status(401).body("Invalid signature");
+    }
+
+    try {
+        ObjectMapper mapper = new ObjectMapper();
+        Map<String, Object> parsedPayload = mapper.readValue(payload, Map.class);
+
+        webhookService.processWebhook(parsedPayload);
+
+    } catch (Exception e) {
+        System.out.println("❌ Error parsing payload: " + e.getMessage());
+    }
+
+    return ResponseEntity.ok("Webhook processed successfully");
+}
 
     private boolean isValidSignature(String payload, String signature) {
         try {
