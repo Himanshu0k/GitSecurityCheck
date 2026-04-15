@@ -26,7 +26,9 @@ public class WebhookService {
                 JsonNode root = mapper.readTree(payload);
 
                 String repoName = root.get("repository").get("name").asText();
+                System.out.println("Repo Name: " + repoName);
                 String owner = root.get("repository").get("owner").get("login").asText();
+                System.out.println("Owner: " + owner);
 
                 JsonNode commits = root.get("commits");
 
