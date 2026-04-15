@@ -20,12 +20,14 @@ public class AnalysisService {
 
     public void analyzeCode(String code) {
 
+//        System.out.println("🧠 Sending code to Gemini...");
+
+//        String prompt = promptBuilder.buildSecurityPrompt(code);
+//
+//        String response = aiClient.callGemini(prompt);
         System.out.println("🧠 Sending code to Gemini...");
+        aiClient.callGemini(code);
 
-        String prompt = promptBuilder.buildSecurityPrompt(code);
-
-        String response = aiClient.callGemini(prompt);
-
-        responseParser.parse(response);
+//        responseParser.parse(response);
     }
 }
