@@ -58,6 +58,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.util.Map;
 
 @Component
 public class AiClient {
@@ -74,37 +77,36 @@ public class AiClient {
             throw new RuntimeException("Gemini API key is missing!");
         }
 
-//        String url = BASE_URL + "?key=" + apiKey;
         String url = "https://generativelanguage.googleapis.com/v1beta/models/"
                 + model + ":generateContent?key=" + apiKey;
-
-        System.out.println("API Key Loaded: true");
-//        System.out.println("Final URL: " + BASE_URL); // don't print full key in logs
 
         RestTemplate restTemplate = new RestTemplate();
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
 
-        String requestBody = """
-        {
-          "contents": [{
-            "parts": [{
-              "text": "%s"
-            }]
-          }]
+        try {
+            // ✅ Build JSON safely using Map
+            Map<String, Object> part = Map.of("text", prompt);
+            Map<String, Object> content = Map.of("parts", new Object[]{part});
+            Map<String, Object> body = Map.of("contents", new Object[]{content});
+
+            ObjectMapper mapper = new ObjectMapper();
+            String requestBody = mapper.writeValueAsString(body);
+
+            HttpEntity<String> request = new HttpEntity<>(requestBody, headers);
+
+            ResponseEntity<String> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.POST,
+                    request,
+                    String.class
+            );
+
+            return response.getBody();
+
+        } catch (Exception e) {
+            throw new RuntimeException("Gemini API call failed", e);
         }
-        """.formatted(prompt.replace("\"", "\\\""));
-
-        HttpEntity<String> request = new HttpEntity<>(requestBody, headers);
-
-        ResponseEntity<String> response = restTemplate.exchange(
-                url,
-                HttpMethod.POST,
-                request,
-                String.class
-        );
-
-        return response.getBody();
     }
 }
