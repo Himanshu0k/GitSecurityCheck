@@ -126,6 +126,7 @@ private void processFiles(String owner, String repo, String branch, List<String>
 
         } catch (Exception e) {
             System.out.println("❌ Error fetching file: " + filePath);
+            e.printStackTrace();
         }
     }
 }
