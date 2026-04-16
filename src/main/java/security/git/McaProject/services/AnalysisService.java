@@ -140,6 +140,7 @@ public class AnalysisService {
             System.out.println("⚠️ Falling back to gemini-1.5-flash");
 //            return aiClient.callGemini(prompt, "gemini-1.5-flash");
             return aiClient.callGemini(prompt, "gemini-2.5-flash");
+
         }
     }
 }
