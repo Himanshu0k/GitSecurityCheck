@@ -134,6 +134,11 @@ public class GithubApiService {
 
     public void postComment(String owner, String repo, String commitSha, JsonNode analysis) {
 
+        if (analysis == null) {
+            System.out.println("⚠️ Skipping comment: analysis is null");
+            return;
+        }
+
         String url = "https://api.github.com/repos/" + owner + "/" + repo
                 + "/commits/" + commitSha + "/comments";
 
@@ -145,18 +150,36 @@ public class GithubApiService {
         headers.setContentType(MediaType.APPLICATION_JSON);
 
         StringBuilder comment = new StringBuilder();
+        comment.append("## 🤖 AI Code Review\n\n");
 
-        comment.append("## 🤖 AI Code Review\n");
-        comment.append("**Status:** ").append(analysis.get("status").asText()).append("\n\n");
+        // ✅ Safe status extraction
+        String status = getSafe(analysis, "status");
+        comment.append("**Status:** ").append(status).append("\n\n");
 
-        for (JsonNode issue : analysis.get("issues")) {
-            comment.append("- ")
-                    .append(issue.get("severity").asText())
-                    .append(" | ")
-                    .append(issue.get("type").asText())
-                    .append("\n  → ")
-                    .append(issue.get("description").asText())
-                    .append("\n\n");
+        JsonNode issuesNode = analysis.get("issues");
+
+        if (issuesNode != null && issuesNode.isArray() && issuesNode.size() > 0) {
+
+            for (JsonNode issue : issuesNode) {
+
+                String severity = getSafe(issue, "severity");
+                String type = getSafe(issue, "type");
+                String description = getSafe(issue, "description");
+                String line = getSafe(issue, "line");
+
+                comment.append("- **").append(severity).append("** | ")
+                        .append(type).append("\n")
+                        .append("  → ").append(description);
+
+                if (!line.equals("N/A")) {
+                    comment.append(" (line ").append(line).append(")");
+                }
+
+                comment.append("\n\n");
+            }
+
+        } else {
+            comment.append("✅ No issues found.\n");
         }
 
         Map<String, String> body = Map.of("body", comment.toString());
@@ -175,5 +198,17 @@ public class GithubApiService {
             System.out.println("❌ Failed to post comment");
             e.printStackTrace();
         }
+    }
+
+    private String getSafe(JsonNode node, String field) {
+        if (node == null) return "N/A";
+
+        JsonNode value = node.get(field);
+
+        if (value == null || value.isNull()) {
+            return "N/A";
+        }
+
+        return value.asText();
     }
 }
