@@ -17,5 +17,6 @@ public class Test {
         // This method can ONLY ever add 5 and 10.
         sum = 5 + 10;
         System.out.println("The result is: " + sum);
+        System.out.println(user + " " + username + " " + password);
     }
 }
