@@ -4,8 +4,10 @@ public class Test {
     public void run() {
 //        String password = "1234";
 //        System.out.println("lets try again");
-        while (true) {
-            System.out.println("password");
+        int i = 10;
+        while(i > 0) {
+            System.out.println("hello");
+            i--;
         }
     }
 }
