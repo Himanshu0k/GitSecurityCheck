@@ -74,11 +74,84 @@
 //    }
 //}
 
+//package security.git.McaProject.services;
+//
+//import com.fasterxml.jackson.databind.JsonNode;
+//import org.springframework.beans.factory.annotation.Autowired;
+//import org.springframework.stereotype.Service;
+//import security.git.McaProject.ai.AiClient;
+//import security.git.McaProject.ai.PromptBuilder;
+//import security.git.McaProject.ai.ResponseParser;
+//
+//@Service
+//public class AnalysisService {
+//
+//    @Autowired
+//    private AiClient aiClient;
+//
+//    @Autowired
+//    private PromptBuilder promptBuilder;
+//
+//    @Autowired
+//    private ResponseParser responseParser;
+//
+//    public JsonNode analyzeCode(String code) {
+//
+//        if (code == null || code.isBlank()) {
+//            System.out.println("⚠️ Empty code received, skipping...");
+//            return null;
+//        }
+//
+//        // limit payload
+//        if (code.length() > 6000) {
+//            code = code.substring(0, 6000);
+//        }
+//
+//        String prompt = promptBuilder.buildSecurityPrompt(code);
+//
+//        int maxRetries = 3;
+//
+//        for (int i = 0; i < maxRetries; i++) {
+//            try {
+//                System.out.println("🧠 Gemini Analysis Attempt " + (i + 1));
+//
+//                String response = callGeminiWithFallback(prompt);
+//
+//                // parse + return
+//                return responseParser.parse(response);
+//
+//            } catch (Exception e) {
+//                System.out.println("❌ Attempt failed: " + (i + 1));
+//                e.printStackTrace();
+//
+//                try {
+//                    Thread.sleep(1000);
+//                } catch (InterruptedException ignored) {}
+//            }
+//        }
+//
+//        throw new RuntimeException("Gemini failed after retries");
+//    }
+//
+//    private String callGeminiWithFallback(String prompt) {
+//        try {
+//            return aiClient.callGemini(prompt, "gemini-2.5-flash");
+//        } catch (Exception e) {
+//            System.out.println("⚠️ Falling back to gemini-2.5-flash once more");
+////            return aiClient.callGemini(prompt, "gemini-1.5-flash");
+//            return aiClient.callGemini(prompt, "gemini-2.5-flash");
+//
+//        }
+//    }
+//}
+
 package security.git.McaProject.services;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import security.git.McaProject.ai.AiClient;
 import security.git.McaProject.ai.PromptBuilder;
 import security.git.McaProject.ai.ResponseParser;
@@ -109,16 +182,35 @@ public class AnalysisService {
 
         String prompt = promptBuilder.buildSecurityPrompt(code);
 
-        int maxRetries = 3;
+        int maxRetries = 2; // ✅ reduce retries
 
         for (int i = 0; i < maxRetries; i++) {
             try {
                 System.out.println("🧠 Gemini Analysis Attempt " + (i + 1));
 
-                String response = callGeminiWithFallback(prompt);
+                String response = callGemini(prompt);
 
-                // parse + return
                 return responseParser.parse(response);
+
+            } catch (HttpClientErrorException e) {
+
+                HttpStatus status = (HttpStatus) e.getStatusCode();
+                System.out.println("❌ HTTP Error: " + status);
+
+                // ❌ DO NOT retry on 400
+                if (status == HttpStatus.BAD_REQUEST) {
+                    throw new RuntimeException("Bad request - fix prompt", e);
+                }
+
+                // ✅ Retry properly on 429
+                if (status == HttpStatus.TOO_MANY_REQUESTS) {
+                    System.out.println("⏳ Rate limited. Waiting before retry...");
+                    try {
+                        Thread.sleep(20000); // wait 20 sec
+                    } catch (InterruptedException ignored) {}
+                } else {
+                    throw e; // other errors → fail fast
+                }
 
             } catch (Exception e) {
                 System.out.println("❌ Attempt failed: " + (i + 1));
@@ -133,14 +225,8 @@ public class AnalysisService {
         throw new RuntimeException("Gemini failed after retries");
     }
 
-    private String callGeminiWithFallback(String prompt) {
-        try {
-            return aiClient.callGemini(prompt, "gemini-2.5-flash");
-        } catch (Exception e) {
-            System.out.println("⚠️ Falling back to gemini-2.5-flash once more");
-//            return aiClient.callGemini(prompt, "gemini-1.5-flash");
-            return aiClient.callGemini(prompt, "gemini-2.5-flash");
-
-        }
+    private String callGemini(String prompt) {
+        // ✅ No fake fallback
+        return aiClient.callGemini(prompt, "gemini-2.5-flash");
     }
 }
