@@ -200,6 +200,46 @@ public class GithubApiService {
         }
     }
 
+    public void setCommitStatus(String owner, String repo, String commitSha, String status) {
+
+        String url = "https://api.github.com/repos/" + owner + "/" + repo
+                + "/statuses/" + commitSha;
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Authorization", "Bearer " + githubToken);
+        headers.set("Accept", "application/vnd.github+json");
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        // map AI status → GitHub status
+        String state = "success";
+        if ("FAIL".equalsIgnoreCase(status)) {
+            state = "failure";
+        }
+
+        Map<String, String> body = Map.of(
+                "state", state,
+                "context", "AI Code Review",
+                "description", state.equals("success")
+                        ? "No issues found"
+                        : "Issues detected in code"
+        );
+
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            String requestBody = mapper.writeValueAsString(body);
+
+            HttpEntity<String> request = new HttpEntity<>(requestBody, headers);
+
+            restTemplate.exchange(url, HttpMethod.POST, request, String.class);
+
+            System.out.println("✅ Commit status set: " + state);
+
+        } catch (Exception e) {
+            System.out.println("❌ Failed to set commit status");
+            e.printStackTrace();
+        }
+    }
+
     private String getSafe(JsonNode node, String field) {
         if (node == null) return "N/A";
 

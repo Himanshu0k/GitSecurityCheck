@@ -132,6 +132,98 @@
 //}
 //}
 
+//package security.git.McaProject.services;
+//
+//import com.fasterxml.jackson.databind.JsonNode;
+//import org.springframework.stereotype.Service;
+//
+//import java.util.List;
+//import java.util.Map;
+//
+//@Service
+//public class WebhookService {
+//
+//    private final GithubApiService githubApiService;
+//    private final AnalysisService analysisService;
+//
+//    public WebhookService(GithubApiService githubApiService,
+//                          AnalysisService analysisService) {
+//        this.githubApiService = githubApiService;
+//        this.analysisService = analysisService;
+//    }
+//
+//    public void processWebhook(Map<String, Object> payload) {
+//
+//        System.out.println("🚀 Processing webhook...");
+//
+//        Map<String, Object> repository = (Map<String, Object>) payload.get("repository");
+//        if (repository == null) return;
+//
+//        Map<String, Object> ownerMap = (Map<String, Object>) repository.get("owner");
+//
+//        String owner = (String) ownerMap.get("login");
+//        String repo = (String) repository.get("name");
+//
+//        String ref = (String) payload.get("ref");
+//        String branch = ref.replace("refs/heads/", "");
+//
+//        System.out.println("Owner: " + owner);
+//        System.out.println("Repo: " + repo);
+//        System.out.println("Branch: " + branch);
+//
+//        List<Map<String, Object>> commits =
+//                (List<Map<String, Object>>) payload.get("commits");
+//
+//        if (commits == null || commits.isEmpty()) {
+//            System.out.println("⚠️ No commits found");
+//            return;
+//        }
+//
+//        for (Map<String, Object> commit : commits) {
+//
+//            String commitSha = (String) commit.get("id");
+//
+//            processFiles(owner, repo, branch, commitSha,
+//                    (List<String>) commit.get("added"));
+//
+//            processFiles(owner, repo, branch, commitSha,
+//                    (List<String>) commit.get("modified"));
+//        }
+//    }
+//
+//    private void processFiles(String owner,
+//                              String repo,
+//                              String branch,
+//                              String commitSha,
+//                              List<String> files) {
+//
+//        if (files == null || files.isEmpty()) return;
+//
+//        for (String filePath : files) {
+//
+//            if (!filePath.endsWith(".java") && !filePath.endsWith(".js")) {
+//                continue;
+//            }
+//
+//            System.out.println("📂 Processing file: " + filePath);
+//
+//            try {
+//                String code = githubApiService.getFileContent(owner, repo, branch, filePath);
+//
+//                JsonNode result = analysisService.analyzeCode(code);
+//
+//                if (result != null) {
+//                    githubApiService.postComment(owner, repo, commitSha, result);
+//                }
+//
+//            } catch (Exception e) {
+//                System.out.println("❌ Failed: " + filePath);
+//                e.printStackTrace();
+//            }
+//        }
+//    }
+//}
+
 package security.git.McaProject.services;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -183,21 +275,33 @@ public class WebhookService {
 
             String commitSha = (String) commit.get("id");
 
-            processFiles(owner, repo, branch, commitSha,
+            // 🔥 Track overall status for this commit
+            boolean hasFailure = false;
+
+            hasFailure |= processFiles(owner, repo, branch, commitSha,
                     (List<String>) commit.get("added"));
 
-            processFiles(owner, repo, branch, commitSha,
+            hasFailure |= processFiles(owner, repo, branch, commitSha,
                     (List<String>) commit.get("modified"));
+
+            // ✅ Final commit status
+            String finalStatus = hasFailure ? "FAIL" : "PASS";
+
+            System.out.println("📊 Final Commit Status: " + finalStatus);
+
+            githubApiService.setCommitStatus(owner, repo, commitSha, finalStatus);
         }
     }
 
-    private void processFiles(String owner,
-                              String repo,
-                              String branch,
-                              String commitSha,
-                              List<String> files) {
+    private boolean processFiles(String owner,
+                                 String repo,
+                                 String branch,
+                                 String commitSha,
+                                 List<String> files) {
 
-        if (files == null || files.isEmpty()) return;
+        if (files == null || files.isEmpty()) return false;
+
+        boolean hasFailure = false;
 
         for (String filePath : files) {
 
@@ -213,13 +317,32 @@ public class WebhookService {
                 JsonNode result = analysisService.analyzeCode(code);
 
                 if (result != null) {
+
+                    // ✅ Post comment
                     githubApiService.postComment(owner, repo, commitSha, result);
+
+                    // ✅ Check status
+                    if (result.has("status")) {
+                        String status = result.get("status").asText();
+
+                        if ("FAIL".equalsIgnoreCase(status)) {
+                            hasFailure = true;
+                        }
+                    } else {
+                        // safer fallback
+                        hasFailure = true;
+                    }
                 }
 
             } catch (Exception e) {
                 System.out.println("❌ Failed: " + filePath);
                 e.printStackTrace();
+
+                // treat errors as failure
+                hasFailure = true;
             }
         }
+
+        return hasFailure;
     }
 }
