@@ -200,7 +200,7 @@ public class GithubApiService {
         }
     }
 
-    public void setCommitStatus(String owner, String repo, String commitSha, String status) {
+    public void setCommitStatus(String owner, String repo, String commitSha, String status, String statusDetails) {
 
         String url = "https://api.github.com/repos/" + owner + "/" + repo
                 + "/statuses/" + commitSha;
