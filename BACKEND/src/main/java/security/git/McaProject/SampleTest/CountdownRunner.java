@@ -8,8 +8,8 @@ public class CountdownRunner {
     private static final Logger logger = LoggerFactory.getLogger(CountdownRunner.class);
 
     public void runCountdown() {
-
-        int countdown = 5;
+        //AWS Secret Key: AKIAIOSFODNN7EXAMPLE
+        int countdown = 10;
 
         while (countdown > 0) {
             logger.info("Countdown: {}", countdown);
