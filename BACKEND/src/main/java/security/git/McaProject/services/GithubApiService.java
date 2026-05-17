@@ -132,40 +132,116 @@ public class GithubApiService {
         }
     }
 
-    public void postComment(String owner, String repo, String commitSha, JsonNode analysis) {
+//    public void postComment(String owner, String repo, String commitSha, JsonNode analysis) {
+//
+//        if (analysis == null) {
+//            System.out.println("⚠️ Skipping comment: analysis is null");
+//            return;
+//        }
+//
+//        String url = "https://api.github.com/repos/" + owner + "/" + repo
+//                + "/commits/" + commitSha + "/comments";
+//
+//        RestTemplate restTemplate = new RestTemplate();
+//
+//        HttpHeaders headers = new HttpHeaders();
+//        headers.set("Authorization", "Bearer " + githubToken);
+//        headers.set("Accept", "application/vnd.github+json");
+//        headers.setContentType(MediaType.APPLICATION_JSON);
+//
+//        StringBuilder comment = new StringBuilder();
+//        comment.append("## 🤖 AI Code Review\n\n");
+//
+//        // ✅ Safe status extraction
+//        String status = getSafe(analysis, "status");
+//        comment.append("**Status:** ").append(status).append("\n\n");
+//
+//        JsonNode issuesNode = analysis.get("issues");
+//
+//        if (issuesNode != null && issuesNode.isArray() && issuesNode.size() > 0) {
+//
+//            for (JsonNode issue : issuesNode) {
+//
+//                String severity = getSafe(issue, "severity");
+//                String type = getSafe(issue, "type");
+//                String description = getSafe(issue, "description");
+//                String line = getSafe(issue, "line");
+//
+//                comment.append("- **").append(severity).append("** | ")
+//                        .append(type).append("\n")
+//                        .append("  → ").append(description);
+//
+//                if (!line.equals("N/A")) {
+//                    comment.append(" (line ").append(line).append(")");
+//                }
+//
+//                comment.append("\n\n");
+//            }
+//
+//        } else {
+//            comment.append("✅ No issues found.\n");
+//        }
+//
+//        Map<String, String> body = Map.of("body", comment.toString());
+//
+//        try {
+//            ObjectMapper mapper = new ObjectMapper();
+//            String requestBody = mapper.writeValueAsString(body);
+//
+//            HttpEntity<String> request = new HttpEntity<>(requestBody, headers);
+//
+//            restTemplate.exchange(url, HttpMethod.POST, request, String.class);
+//
+//            System.out.println("✅ Comment posted to GitHub");
+//
+//        } catch (Exception e) {
+//            System.out.println("❌ Failed to post comment");
+//            e.printStackTrace();
+//        }
+//    }
+public void postComment(String owner, String repo, String commitSha, String rawGeminiResponse) {
 
-        if (analysis == null) {
-            System.out.println("⚠️ Skipping comment: analysis is null");
-            return;
-        }
+    if (rawGeminiResponse == null) {
+        System.out.println("⚠️ Skipping comment: response is null");
+        return;
+    }
 
-        String url = "https://api.github.com/repos/" + owner + "/" + repo
-                + "/commits/" + commitSha + "/comments";
+    String url = "https://api.github.com/repos/" + owner + "/" + repo
+            + "/commits/" + commitSha + "/comments";
 
-        RestTemplate restTemplate = new RestTemplate();
+    HttpHeaders headers = new HttpHeaders();
+    headers.set("Authorization", "Bearer " + githubToken);
+    headers.set("Accept", "application/vnd.github+json");
+    headers.setContentType(MediaType.APPLICATION_JSON);
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("Authorization", "Bearer " + githubToken);
-        headers.set("Accept", "application/vnd.github+json");
-        headers.setContentType(MediaType.APPLICATION_JSON);
+    StringBuilder comment = new StringBuilder();
+    comment.append("## 🤖 AI Code Review\n\n");
 
-        StringBuilder comment = new StringBuilder();
-        comment.append("## 🤖 AI Code Review\n\n");
+    try {
+        ObjectMapper mapper = new ObjectMapper();
 
-        // ✅ Safe status extraction
+        // ✅ Unwrap the Gemini candidates wrapper to get the actual audit JSON
+        JsonNode root = mapper.readTree(rawGeminiResponse);
+        String innerText = root
+                .get("candidates").get(0)
+                .get("content").get("parts").get(0)
+                .get("text").asText()
+                .replace("```json", "").replace("```", "").trim();
+
+        JsonNode analysis = mapper.readTree(innerText);
+
+        // ✅ Now analysis has "status" and "issues" at top level
         String status = getSafe(analysis, "status");
         comment.append("**Status:** ").append(status).append("\n\n");
 
         JsonNode issuesNode = analysis.get("issues");
 
         if (issuesNode != null && issuesNode.isArray() && issuesNode.size() > 0) {
-
             for (JsonNode issue : issuesNode) {
-
-                String severity = getSafe(issue, "severity");
-                String type = getSafe(issue, "type");
+                String severity    = getSafe(issue, "severity");
+                String type        = getSafe(issue, "type");
                 String description = getSafe(issue, "description");
-                String line = getSafe(issue, "line");
+                String line        = getSafe(issue, "line");
 
                 comment.append("- **").append(severity).append("** | ")
                         .append(type).append("\n")
@@ -174,31 +250,30 @@ public class GithubApiService {
                 if (!line.equals("N/A")) {
                     comment.append(" (line ").append(line).append(")");
                 }
-
                 comment.append("\n\n");
             }
-
         } else {
             comment.append("✅ No issues found.\n");
         }
 
-        Map<String, String> body = Map.of("body", comment.toString());
-
-        try {
-            ObjectMapper mapper = new ObjectMapper();
-            String requestBody = mapper.writeValueAsString(body);
-
-            HttpEntity<String> request = new HttpEntity<>(requestBody, headers);
-
-            restTemplate.exchange(url, HttpMethod.POST, request, String.class);
-
-            System.out.println("✅ Comment posted to GitHub");
-
-        } catch (Exception e) {
-            System.out.println("❌ Failed to post comment");
-            e.printStackTrace();
-        }
+    } catch (Exception e) {
+        System.out.println("⚠️ Failed to parse Gemini response for comment: " + e.getMessage());
+        comment.append("⚠️ Could not parse AI response.\n");
     }
+
+    Map<String, String> body = Map.of("body", comment.toString());
+
+    try {
+        ObjectMapper mapper = new ObjectMapper();
+        String requestBody = mapper.writeValueAsString(body);
+        HttpEntity<String> request = new HttpEntity<>(requestBody, headers);
+        restTemplate.exchange(url, HttpMethod.POST, request, String.class);
+        System.out.println("✅ Comment posted to GitHub");
+    } catch (Exception e) {
+        System.out.println("❌ Failed to post comment");
+        e.printStackTrace();
+    }
+}
 
     public void setCommitStatus(String owner, String repo, String commitSha, String status, String statusDetails) {
 

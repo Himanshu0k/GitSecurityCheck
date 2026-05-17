@@ -1027,7 +1027,7 @@ public class WebhookService {
                 try {
                     ObjectMapper mapper = new ObjectMapper();
                     JsonNode responseNode = mapper.readTree(rawResponse);
-                    githubApiService.postComment(owner, repo, commitSha, responseNode);
+                    githubApiService.postComment(owner, repo, commitSha, String.valueOf(responseNode));
                 } catch (Exception e) {
                     System.out.println("⚠️ Could not post comment for: " + filePath
                             + " — " + e.getMessage());

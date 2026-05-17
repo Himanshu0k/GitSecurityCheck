@@ -27,7 +27,7 @@ public class AuditResult {
     private Integer mediumCount = 0;
     private Integer lowCount = 0;
 
-    @Column(columnDefinition = "JSON")
+    @Column(columnDefinition = "TEXT")
     private String vulnerabilitiesJson; // Store detailed vulnerabilities
 
     private LocalDateTime timestamp;
