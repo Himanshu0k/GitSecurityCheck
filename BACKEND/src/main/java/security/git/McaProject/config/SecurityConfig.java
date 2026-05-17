@@ -14,12 +14,13 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf
-                        .ignoringRequestMatchers("/webhook")  // disable CSRF for webhook
+                        .ignoringRequestMatchers("/webhook", "/api/**")  // disable CSRF for webhook
                 )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/webhook").permitAll()  // allow without login
+                        .requestMatchers("/webhook", "/api/**").permitAll()  // allow without login
                         .anyRequest().authenticated()
-                );
+                )
+                .cors(cors -> cors.configure(http));
         return http.build();
     }
 }

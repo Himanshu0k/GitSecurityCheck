@@ -133,10 +133,11 @@ public class ResponseParser {
         data.setDetailedVulnerabilities(rawText);
 
         // Determine status
-        int totalVulns = data.getCriticalCount() + data.getHighCount() +
-                data.getMediumCount() + data.getLowCount();
-        data.setStatus(totalVulns == 0 ? "completed" : "completed"); // or "failed" based on your logic
+//        int totalVulns = data.getCriticalCount() + data.getHighCount() +
+//                data.getMediumCount() + data.getLowCount();
+//        data.setStatus(totalVulns == 0 ? "completed" : "completed"); // or "failed" based on your logic
 
+        data.setStatus("completed");
         return data;
     }
 
