@@ -9,7 +9,7 @@ public class CountdownRunner {
 
     public void runCountdown() {
         //AWS Secret Key: AKIAIOSFODNN7EXAMPLE
-        int countdown = 10;
+        int countdown = 20;
 
         while (countdown > 0) {
             logger.info("Countdown: {}", countdown);
