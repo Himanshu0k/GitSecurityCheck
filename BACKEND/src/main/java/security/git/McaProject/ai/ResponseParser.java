@@ -117,29 +117,61 @@ public class ResponseParser {
         }
     }
 
-    private ParsedAuditData extractAuditData(JsonNode auditData, String rawText) {
-        ParsedAuditData data = new ParsedAuditData();
+//    private ParsedAuditData extractAuditData(JsonNode auditData, String rawText) {
+//        ParsedAuditData data = new ParsedAuditData();
+//
+//        // Extract vulnerability counts
+//        if (auditData.has("vulnerabilities")) {
+//            JsonNode vulns = auditData.get("vulnerabilities");
+//            data.setCriticalCount(vulns.has("critical") ? vulns.get("critical").asInt() : 0);
+//            data.setHighCount(vulns.has("high") ? vulns.get("high").asInt() : 0);
+//            data.setMediumCount(vulns.has("medium") ? vulns.get("medium").asInt() : 0);
+//            data.setLowCount(vulns.has("low") ? vulns.get("low").asInt() : 0);
+//        }
+//
+//        // Store the full JSON for detailed view
+//        data.setDetailedVulnerabilities(rawText);
+//
+//        // Determine status
+////        int totalVulns = data.getCriticalCount() + data.getHighCount() +
+////                data.getMediumCount() + data.getLowCount();
+////        data.setStatus(totalVulns == 0 ? "completed" : "completed"); // or "failed" based on your logic
+//
+//        data.setStatus("completed");
+//        return data;
+//    }
+private ParsedAuditData extractAuditData(JsonNode auditData, String rawText) {
+    ParsedAuditData data = new ParsedAuditData();
 
-        // Extract vulnerability counts
-        if (auditData.has("vulnerabilities")) {
-            JsonNode vulns = auditData.get("vulnerabilities");
-            data.setCriticalCount(vulns.has("critical") ? vulns.get("critical").asInt() : 0);
-            data.setHighCount(vulns.has("high") ? vulns.get("high").asInt() : 0);
-            data.setMediumCount(vulns.has("medium") ? vulns.get("medium").asInt() : 0);
-            data.setLowCount(vulns.has("low") ? vulns.get("low").asInt() : 0);
+    System.out.println("🔍 auditData keys: " + auditData.fieldNames()); // ← add this
+    System.out.println("🔍 full auditData: " + auditData.toString());   // ← add this
+
+    JsonNode issuesNode = auditData.get("issues");
+    System.out.println("🔍 issuesNode: " + issuesNode);                 // ← add this
+
+    if (issuesNode != null && issuesNode.isArray()) {
+        for (JsonNode issue : issuesNode) {
+            if (issue.get("severity") == null) continue;
+            String severity = issue.get("severity").asText().toUpperCase().trim();
+            System.out.println("   → severity found: " + severity);    // ← add this
+            switch (severity) {
+                case "HIGH"     -> data.setHighCount(data.getHighCount() + 1);
+                case "MEDIUM"   -> data.setMediumCount(data.getMediumCount() + 1);
+                case "LOW"      -> data.setLowCount(data.getLowCount() + 1);
+                case "CRITICAL" -> data.setHighCount(data.getHighCount() + 1);
+            }
         }
-
-        // Store the full JSON for detailed view
-        data.setDetailedVulnerabilities(rawText);
-
-        // Determine status
-//        int totalVulns = data.getCriticalCount() + data.getHighCount() +
-//                data.getMediumCount() + data.getLowCount();
-//        data.setStatus(totalVulns == 0 ? "completed" : "completed"); // or "failed" based on your logic
-
-        data.setStatus("completed");
-        return data;
     }
+
+    data.setDetailedVulnerabilities(rawText);
+    data.setStatus("completed");
+
+    System.out.println("📊 Final — H:" + data.getHighCount()
+            + " M:" + data.getMediumCount()
+            + " L:" + data.getLowCount());
+
+    return data;
+}
 
     // Inner class to hold parsed data
     public static class ParsedAuditData {
