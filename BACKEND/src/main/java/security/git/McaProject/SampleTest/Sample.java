@@ -3,7 +3,7 @@ package security.git.McaProject.SampleTest;
 public class Sample {
     public void run() {
         while(true) {
-            System.out.println("Checking the infinite loop condition ....");
+            System.out.println("Checking the infinite loop ");
         }
     }
 }
